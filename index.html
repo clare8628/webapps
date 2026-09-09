@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Komorebi | 個人 Web APP 群覽網頁</title>
+  <meta name="description" content="極簡日系溫潤風格的個人日常與工作 Web APP 群覽、管理與使用數據統計系統。">
+  <!-- Google Fonts: Noto Serif TC (Editorial elegance) & Plus Jakarta Sans (Modern UI) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header 頂部雜誌風刊頭導覽 -->
+    <header class="editorial-header">
+      <div class="header-top">
+        <div class="brand-group">
+          <span class="brand-stamp" aria-hidden="true">晴嵐</span>
+          <div class="brand-title-wrap">
+            <h1 class="brand-title" data-i18n="brandTitle">Komorebi App Hub</h1>
+            <p class="brand-subtitle" data-i18n="brandSubtitle">個人日常生活與工作 APP 群覽手冊</p>
+          </div>
+        </div>
+
+        <div class="header-actions">
+          <!-- 統計儀表板按鈕 -->
+          <button id="btnOpenStats" class="btn btn-outline" type="button" aria-haspopup="dialog">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+            <span data-i18n="btnStats">使用統計與匯出</span>
+          </button>
+
+          <!-- 新增 APP 按鈕 -->
+          <button id="btnOpenAddApp" class="btn btn-primary" type="button" aria-haspopup="dialog">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+            <span data-i18n="btnAddApp">新增 APP</span>
+          </button>
+
+          <!-- 深淺色模式切換 -->
+          <button id="btnThemeToggle" class="icon-button" type="button" title="切換色調" aria-label="Toggle theme">
+            <svg id="iconSun" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+            <svg id="iconMoon" class="icon hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+          </button>
+
+          <!-- 語言切換 (ZH / EN) -->
+          <button id="btnLangToggle" class="lang-toggle-btn" type="button" aria-label="Switch language">
+            <span class="lang-text" id="currentLangText">EN</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 統計摘要列 (Mini Metrics Bar) -->
+      <section class="metrics-bar" aria-label="Overview Metrics">
+        <div class="metric-item">
+          <span class="metric-label" data-i18n="metricTotalApps">收錄 APP 總數</span>
+          <strong class="metric-value" id="metricTotalApps">0</strong>
+        </div>
+        <div class="metric-divider"></div>
+        <div class="metric-item">
+          <span class="metric-label" data-i18n="metricWorkApps">工作專區</span>
+          <strong class="metric-value highlight-work" id="metricWorkApps">0</strong>
+        </div>
+        <div class="metric-divider"></div>
+        <div class="metric-item">
+          <span class="metric-label" data-i18n="metricLifeApps">日常生活</span>
+          <strong class="metric-value highlight-life" id="metricLifeApps">0</strong>
+        </div>
+        <div class="metric-divider"></div>
+        <div class="metric-item">
+          <span class="metric-label" data-i18n="metricTotalLaunches">總點擊開啟次數</span>
+          <strong class="metric-value" id="metricTotalLaunches">0</strong>
+        </div>
+      </section>
+
+      <!-- 篩選與檢視控制列 (Controls & Search) -->
+      <div class="controls-bar">
+        <!-- 搜尋列 -->
+        <div class="search-wrap">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="search" id="searchInput" class="search-input" placeholder="搜尋 APP 名稱、網址或描述..." data-i18n-placeholder="searchPlaceholder" autocomplete="off">
+          <button id="btnClearSearch" class="clear-search-btn hidden" type="button" aria-label="Clear search">×</button>
+        </div>
+
+        <!-- 快速分類篩選按鈕列 -->
+        <nav class="category-tabs" id="categoryTabs" aria-label="Category filter">
+          <!-- Dynamically populated via JS -->
+        </nav>
+
+        <!-- 檢視模式切換 (群覽分區列 vs 緊湊網格) -->
+        <div class="view-switch-group" role="radiogroup" aria-label="View Mode">
+          <button type="button" id="btnViewSections" class="view-switch-btn active" title="依類型分區呈現" aria-pressed="true">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+            <span data-i18n="viewSections">分區群覽</span>
+          </button>
+          <button type="button" id="btnViewGrid" class="view-switch-btn" title="綜合網格" aria-pressed="false">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            <span data-i18n="viewGrid">綜合網格</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- 主要內容區 (Gallery Sections / Grid) -->
+    <main class="main-content" id="mainContent">
+      <div id="galleryContainer" class="gallery-container">
+        <!-- 動態渲染各分類與 APP 卡片 -->
+      </div>
+
+      <!-- 空狀態 (當無任何 APP 或搜尋無結果時) -->
+      <div id="emptyState" class="empty-state hidden">
+        <div class="empty-illustration">🍃</div>
+        <h3 class="empty-title" data-i18n="emptyTitle">尚未找到相符的 Web APP</h3>
+        <p class="empty-desc" data-i18n="emptyDesc">試著更換搜尋關鍵字，或點擊右上角「新增 APP」加入您的第一個應用。</p>
+        <button id="btnEmptyAdd" class="btn btn-outline" type="button" data-i18n="emptyAddBtn">立刻新增 APP</button>
+      </div>
+    </main>
+
+    <!-- 頁尾 -->
+    <footer class="editorial-footer">
+      <div class="footer-inner">
+        <p class="footer-note">
+          <span data-i18n="footerWabiSabi">「簡單而專注的生活，藏於方寸井然的器具之中。」</span>
+        </p>
+        <p class="footer-copy">
+          © 2026 Komorebi App Gallery · <span data-i18n="footerDataNotice">所有資料均安全儲存於個人本機瀏覽器中</span>
+        </p>
+      </div>
+    </footer>
+  </div>
+
+  <!-- 新增 / 編輯 APP 彈窗 (<dialog>) -->
+  <dialog id="appDialog" class="modal-dialog">
+    <div class="dialog-card">
+      <header class="dialog-header">
+        <h2 id="dialogTitle" class="dialog-title" data-i18n="modalAddTitle">新增 Web APP</h2>
+        <button id="btnCloseDialog" class="btn-close" type="button" aria-label="Close dialog">✕</button>
+      </header>
+
+      <form id="appForm" class="dialog-form" novalidate>
+        <input type="hidden" id="appId">
+
+        <div class="form-group">
+          <label for="appName" class="form-label">
+            <span data-i18n="formName">APP 名稱</span> <span class="req">*</span>
+          </label>
+          <input type="text" id="appName" class="form-input" placeholder="例如：Notion 知識筆記、Spotify 音樂" required>
+        </div>
+
+        <div class="form-group">
+          <label for="appUrl" class="form-label">
+            <span data-i18n="formUrl">網址 URL</span> <span class="req">*</span>
+          </label>
+          <input type="url" id="appUrl" class="form-input" placeholder="https://..." required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group form-group-half">
+            <label for="appCategory" class="form-label">
+              <span data-i18n="formCategory">所屬類型</span> <span class="req">*</span>
+            </label>
+            <select id="appCategory" class="form-select" required>
+              <option value="work">💼 工作辦公 (Work)</option>
+              <option value="life">🍵 日常生活 (Life)</option>
+              <option value="learning">📚 學習閱讀 (Learning)</option>
+              <option value="tools">🛠️ 實用工具 (Tools)</option>
+              <option value="creation">🎨 創意設計 (Creation)</option>
+              <option value="finance">🪙 財務理財 (Finance)</option>
+            </select>
+          </div>
+
+          <div class="form-group form-group-half">
+            <label for="appScope" class="form-label">
+              <span data-i18n="formScope">使用場景維度</span> <span class="req">*</span>
+            </label>
+            <select id="appScope" class="form-select" required>
+              <option value="work" data-i18n="scopeWork">工作用途 (Work)</option>
+              <option value="life" data-i18n="scopeLife">日常生活 (Life)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group form-group-half">
+            <label for="appIcon" class="form-label">
+              <span data-i18n="formIcon">圖示或 Emoji</span>
+            </label>
+            <input type="text" id="appIcon" class="form-input" placeholder="例如：📝, ☕, 📊 或圖片網址" maxlength="100">
+          </div>
+
+          <div class="form-group form-group-half">
+            <label for="appColor" class="form-label">
+              <span data-i18n="formColor">代表色系</span>
+            </label>
+            <div class="color-picker-group">
+              <input type="color" id="appColor" class="form-color" value="#C06C4C">
+              <span class="color-preset-wrap" id="colorPresets">
+                <button type="button" class="preset-color-dot" style="background:#C06C4C" data-color="#C06C4C" title="陶橘"></button>
+                <button type="button" class="preset-color-dot" style="background:#5B7B88" data-color="#5B7B88" title="和青"></button>
+                <button type="button" class="preset-color-dot" style="background:#657D6A" data-color="#657D6A" title="抹茶"></button>
+                <button type="button" class="preset-color-dot" style="background:#9B7382" data-color="#9B7382" title="墨紫"></button>
+                <button type="button" class="preset-color-dot" style="background:#8D775F" data-color="#8D775F" title="柴褐"></button>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="appDescription" class="form-label">
+            <span data-i18n="formDescription">簡介備註 / 說明</span>
+          </label>
+          <textarea id="appDescription" class="form-textarea" rows="2" placeholder="例如：用於專案規劃、日常反思或資料彙整"></textarea>
+        </div>
+
+        <div class="form-group form-checkbox-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="appPinned">
+            <span class="checkbox-custom"></span>
+            <span data-i18n="formPinned">釘選至常用精選 (Pinned to top)</span>
+          </label>
+        </div>
+
+        <footer class="dialog-actions">
+          <button type="button" id="btnCancelDialog" class="btn btn-outline" data-i18n="btnCancel">取消</button>
+          <button type="submit" class="btn btn-primary" data-i18n="btnSave">儲存應用</button>
+        </footer>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- 數據統計與匯出抽屜/彈窗 (<dialog>) -->
+  <dialog id="statsDialog" class="modal-dialog modal-dialog-lg">
+    <div class="dialog-card">
+      <header class="dialog-header">
+        <div class="dialog-header-title-group">
+          <h2 class="dialog-title" data-i18n="statsTitle">個人 APP 使用數據統計與匯出</h2>
+          <p class="dialog-subtitle" data-i18n="statsSubtitle">追蹤工作與日常生活節奏，掌握數位工具使用習慣</p>
+        </div>
+        <button id="btnCloseStats" class="btn-close" type="button" aria-label="Close statistics">✕</button>
+      </header>
+
+      <div class="stats-content">
+        <!-- 上半部：核心指標卡片 -->
+        <div class="stats-summary-grid">
+          <div class="stat-box">
+            <span class="stat-box-title" data-i18n="statBoxTotalClicks">累計啟用次數</span>
+            <span class="stat-box-num" id="statTotalClicks">0</span>
+            <span class="stat-box-hint" data-i18n="statBoxClicksHint">每次點擊卡片自動計入</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-box-title" data-i18n="statBoxWorkRatio">工作使用佔比</span>
+            <span class="stat-box-num highlight-work" id="statWorkRatio">0%</span>
+            <span class="stat-box-hint" id="statWorkCountText">0 次點擊</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-box-title" data-i18n="statBoxLifeRatio">生活休閒佔比</span>
+            <span class="stat-box-num highlight-life" id="statLifeRatio">0%</span>
+            <span class="stat-box-hint" id="statLifeCountText">0 次點擊</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-box-title" data-i18n="statBoxActiveApp">最常使用 APP</span>
+            <span class="stat-box-num text-sm" id="statTopApp">-</span>
+            <span class="stat-box-hint" id="statTopAppClicks">0 次</span>
+          </div>
+        </div>
+
+        <!-- 比例長條視覺化 (Visual Progress Bar) -->
+        <div class="ratio-bar-section">
+          <div class="ratio-bar-labels">
+            <span>💼 <span data-i18n="scopeWork">工作用途</span>: <strong id="ratioWorkPercent">0%</strong></span>
+            <span>🍵 <span data-i18n="scopeLife">日常生活</span>: <strong id="ratioLifePercent">0%</strong></span>
+          </div>
+          <div class="ratio-progress-bar">
+            <div id="ratioProgressWork" class="progress-fill work" style="width: 50%;"></div>
+            <div id="ratioProgressLife" class="progress-fill life" style="width: 50%;"></div>
+          </div>
+        </div>
+
+        <!-- 中半部：使用頻率排行榜 -->
+        <div class="stats-rank-section">
+          <h3 class="section-subheading" data-i18n="statsRankingTitle">🏆 常用排行榜 Top 5</h3>
+          <ul class="stats-rank-list" id="statsRankList">
+            <!-- 動態注入排名項目 -->
+          </ul>
+        </div>
+
+        <!-- 下半部：數據匯出與備份管理 -->
+        <div class="stats-export-section">
+          <h3 class="section-subheading" data-i18n="exportSectionTitle">📦 數據備份與匯出管理</h3>
+          <p class="section-desc" data-i18n="exportSectionDesc">支援將 APP 清單與使用紀錄匯出為 CSV 報表或完整 JSON 備份檔，隨時可跨電腦與瀏覽器還原。</p>
+
+          <div class="export-btn-group">
+            <button id="btnExportCSV" class="btn btn-outline" type="button">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+              <span data-i18n="btnExportCSV">匯出 CSV 使用報表</span>
+            </button>
+
+            <button id="btnExportJSON" class="btn btn-outline" type="button">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span data-i18n="btnExportJSON">匯出完整備份 (JSON)</span>
+            </button>
+
+            <label class="btn btn-outline file-input-label">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <span data-i18n="btnImportJSON">匯入備份檔 (JSON)</span>
+              <input type="file" id="fileImportJSON" accept=".json" class="visually-hidden">
+            </label>
+
+            <button id="btnResetData" class="btn btn-text text-danger" type="button" data-i18n="btnResetDefaults">
+              重置為初始範例資料
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- 刪除確認對話框 (<dialog>) -->
+  <dialog id="deleteConfirmDialog" class="modal-dialog modal-dialog-sm">
+    <div class="dialog-card">
+      <header class="dialog-header">
+        <h3 class="dialog-title" data-i18n="confirmDeleteTitle">確認移除此 APP？</h3>
+        <button id="btnCloseDeleteConfirm" class="btn-close" type="button">✕</button>
+      </header>
+      <div class="dialog-body">
+        <p id="deleteConfirmText" class="delete-hint">您確定要從群覽中移除「<strong id="deleteAppName"></strong>」嗎？此操作無法還原。</p>
+      </div>
+      <footer class="dialog-actions">
+        <button id="btnCancelDelete" class="btn btn-outline" type="button" data-i18n="btnCancel">取消</button>
+        <button id="btnConfirmDelete" class="btn btn-danger" type="button" data-i18n="btnDeleteConfirm">確認移除</button>
+      </footer>
+    </div>
+  </dialog>
+
+  <!-- 吐司通知提示 (Toast notification) -->
+  <div id="toast" class="toast-notification hidden" role="status" aria-live="polite">
+    <span id="toastMessage"></span>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
