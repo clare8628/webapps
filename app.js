@@ -1,6 +1,6 @@
 /**
- * Komorebi App Hub - 個人 Web APP 群覽網頁核心邏輯
- * 具備：中英雙語切換、分區群覽、APP 管理、點擊統計、數據視覺化與 CSV/JSON 匯出匯入
+ * Clare App Hub - 個人 Web APP 群覽網頁核心邏輯
+ * 具備：中英雙語切換、分區群覽、APP 管理、滑鼠拖拉排序與跨組移動、點擊統計、數據視覺化與 CSV/JSON 匯出匯入
  */
 
 // =============================================================================
@@ -8,7 +8,7 @@
 // =============================================================================
 const I18N = {
   'zh-Hant': {
-    brandTitle: 'Komorebi App Hub',
+    brandTitle: 'Clare App Hub',
     brandSubtitle: '個人日常生活與工作 APP 群覽手冊',
     btnStats: '使用統計與匯出',
     btnAddApp: '新增 APP',
@@ -68,11 +68,15 @@ const I18N = {
     toastImportSuccess: '成功匯入 {count} 個 APP 資料！',
     toastImportError: '匯入失敗：檔案格式不正確。',
     toastUrlError: '請填寫正確的網址（包含 http:// 或 https://）。',
+    toastOrderUpdated: '已更新 APP 排列順序。',
+    toastCategoryChanged: '已將「{name}」移至【{cat}】分類！',
+    dragEmptyHint: '可拖曳 APP 至此分類區塊',
+    dragHandleHint: '長按滑鼠拖曳可調整位置或跨組分類',
     clicksUnit: '次點擊',
     lastUsed: '最後使用：'
   },
   'en': {
-    brandTitle: 'Komorebi App Hub',
+    brandTitle: 'Clare App Hub',
     brandSubtitle: 'Personal Daily & Work Web App Editorial Gallery',
     btnStats: 'Analytics & Export',
     btnAddApp: 'Add App',
@@ -132,6 +136,10 @@ const I18N = {
     toastImportSuccess: 'Successfully imported {count} apps!',
     toastImportError: 'Import failed: Invalid JSON format.',
     toastUrlError: 'Please enter a valid URL (starting with http:// or https://).',
+    toastOrderUpdated: 'App position updated.',
+    toastCategoryChanged: 'Moved "{name}" to {cat}!',
+    dragEmptyHint: 'Drag and drop apps into this category',
+    dragHandleHint: 'Drag to reorder or move across groups',
     clicksUnit: 'clicks',
     lastUsed: 'Last opened: '
   }
@@ -318,15 +326,15 @@ const CATEGORY_META = {
 // =============================================================================
 class AppState {
   constructor() {
-    this.currentLang = localStorage.getItem('komorebi_lang') || 'zh-Hant';
-    this.currentTheme = localStorage.getItem('komorebi_theme') || 'light';
-    this.viewMode = localStorage.getItem('komorebi_view_mode') || 'sections'; // 'sections' | 'grid'
+    this.currentLang = localStorage.getItem('clare_lang') || localStorage.getItem('komorebi_lang') || 'zh-Hant';
+    this.currentTheme = localStorage.getItem('clare_theme') || localStorage.getItem('komorebi_theme') || 'light';
+    this.viewMode = localStorage.getItem('clare_view_mode') || localStorage.getItem('komorebi_view_mode') || 'sections'; // 'sections' | 'grid'
     this.selectedCategory = 'all'; // 'all' or category key
     this.searchQuery = '';
     this.deleteTargetId = null;
 
-    // 載入 APP 資料
-    const storedApps = localStorage.getItem('komorebi_apps');
+    // 載入 APP 資料（自動讀取並平滑過渡）
+    const storedApps = localStorage.getItem('clare_apps') || localStorage.getItem('komorebi_apps');
     if (storedApps) {
       try {
         this.apps = JSON.parse(storedApps);
@@ -350,28 +358,26 @@ class AppState {
       }
     }
 
-    if (hasNew || !storedApps) {
-      this.saveToStorage();
-    }
+    this.saveToStorage();
   }
 
   saveToStorage() {
-    localStorage.setItem('komorebi_apps', JSON.stringify(this.apps));
+    localStorage.setItem('clare_apps', JSON.stringify(this.apps));
   }
 
   setLang(lang) {
     this.currentLang = lang;
-    localStorage.setItem('komorebi_lang', lang);
+    localStorage.setItem('clare_lang', lang);
   }
 
   setTheme(theme) {
     this.currentTheme = theme;
-    localStorage.setItem('komorebi_theme', theme);
+    localStorage.setItem('clare_theme', theme);
   }
 
   setViewMode(mode) {
     this.viewMode = mode;
-    localStorage.setItem('komorebi_view_mode', mode);
+    localStorage.setItem('clare_view_mode', mode);
   }
 
   addApp(appData) {
@@ -528,6 +534,12 @@ function filterApps() {
   });
 }
 
+// =============================================================================
+// 全域拖曳狀態 (Drag and Drop State)
+// =============================================================================
+let draggedAppId = null;
+let isDraggingActive = false;
+
 function renderAppGallery() {
   const gallery = document.getElementById('galleryContainer');
   const emptyState = document.getElementById('emptyState');
@@ -543,30 +555,20 @@ function renderAppGallery() {
 
   if (state.viewMode === 'sections' && state.selectedCategory === 'all' && !state.searchQuery) {
     // 模式 1：依類型分區呈現 (Grouped Section Rows)
-    // 滿足 prompt.md 需求：「3.同一類型的APP放置在同一區塊或同一列，以便群覽與選擇。」
-    const grouped = {};
-    for (const app of filtered) {
-      const cat = app.category || 'tools';
-      if (!grouped[cat]) grouped[cat] = [];
-      grouped[cat].push(app);
-    }
-
-    // 依 category order 排序
-    const sortedCats = Object.keys(grouped).sort((a, b) => {
+    // 遍歷所有已定義的分類，確保各分區均可供拖放，維持使用者手動排列順序
+    const sortedCats = Object.keys(CATEGORY_META).sort((a, b) => {
       const ordA = CATEGORY_META[a] ? CATEGORY_META[a].order : 99;
       const ordB = CATEGORY_META[b] ? CATEGORY_META[b].order : 99;
       return ordA - ordB;
     });
 
     for (const catKey of sortedCats) {
-      const catApps = grouped[catKey];
-      // 依釘選與點擊次數排序
-      catApps.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (b.clickCount || 0) - (a.clickCount || 0));
-
+      const catApps = filtered.filter(app => app.category === catKey);
       const meta = CATEGORY_META[catKey] || { labelKey: catKey, icon: '📁' };
 
       const section = document.createElement('section');
       section.className = 'category-section';
+      section.setAttribute('data-category', catKey);
 
       const sectionHeader = document.createElement('header');
       sectionHeader.className = 'section-header';
@@ -581,35 +583,82 @@ function renderAppGallery() {
 
       const grid = document.createElement('div');
       grid.className = 'cards-grid';
-      for (const app of catApps) {
-        grid.appendChild(createAppCard(app));
-      }
-      section.appendChild(grid);
+      grid.setAttribute('data-category', catKey);
 
+      // 容器支援跨組拖入空白處或空分類
+      grid.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        grid.classList.add('drag-over-container');
+      });
+      grid.addEventListener('dragleave', (e) => {
+        if (!grid.contains(e.relatedTarget)) {
+          grid.classList.remove('drag-over-container');
+        }
+      });
+      grid.addEventListener('drop', (e) => {
+        e.preventDefault();
+        grid.classList.remove('drag-over-container');
+        if (draggedAppId && !e.target.closest('.app-card')) {
+          handleAppDropToCategory(draggedAppId, catKey);
+        }
+      });
+
+      if (catApps.length === 0) {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'empty-category-placeholder';
+        placeholder.innerHTML = `<span>🍃 ${t('dragEmptyHint')}</span>`;
+        grid.appendChild(placeholder);
+      } else {
+        for (const app of catApps) {
+          grid.appendChild(createAppCard(app, catKey));
+        }
+      }
+
+      section.appendChild(grid);
       gallery.appendChild(section);
     }
   } else {
     // 模式 2：綜合網格 (Unified Grid) 或單一分類檢視
     const grid = document.createElement('div');
     grid.className = 'cards-grid';
+    if (state.selectedCategory !== 'all') {
+      grid.setAttribute('data-category', state.selectedCategory);
+    }
 
-    // 依釘選與點擊次數排序
-    const sorted = [...filtered].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (b.clickCount || 0) - (a.clickCount || 0));
+    grid.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      grid.classList.add('drag-over-container');
+    });
+    grid.addEventListener('dragleave', (e) => {
+      if (!grid.contains(e.relatedTarget)) {
+        grid.classList.remove('drag-over-container');
+      }
+    });
+    grid.addEventListener('drop', (e) => {
+      e.preventDefault();
+      grid.classList.remove('drag-over-container');
+      if (draggedAppId && !e.target.closest('.app-card') && state.selectedCategory !== 'all') {
+        handleAppDropToCategory(draggedAppId, state.selectedCategory);
+      }
+    });
 
-    for (const app of sorted) {
-      grid.appendChild(createAppCard(app));
+    for (const app of filtered) {
+      grid.appendChild(createAppCard(app, app.category));
     }
     gallery.appendChild(grid);
   }
 }
 
-function createAppCard(app) {
+function createAppCard(app, currentCategory) {
   const card = document.createElement('article');
   card.className = 'app-card';
   card.style.setProperty('--card-accent', app.color || '#C06C4C');
   card.setAttribute('data-id', app.id);
   card.setAttribute('role', 'button');
   card.setAttribute('tabindex', '0');
+  card.setAttribute('draggable', 'true');
 
   // 判定 Icon 是 Emoji 還是圖片
   let iconHtml = '🌐';
@@ -639,6 +688,7 @@ function createAppCard(app) {
           <div class="card-title-row">
             <h3 class="card-title">${escapeHtml(app.name)}</h3>
             ${app.pinned ? '<span class="card-pinned-star" title="Pinned">★</span>' : ''}
+            <span class="card-drag-handle" title="${escapeHtml(t('dragHandleHint'))}" aria-label="Drag Handle">⠿</span>
           </div>
           <p class="card-url">${escapeHtml(displayUrl)}</p>
         </div>
@@ -664,15 +714,71 @@ function createAppCard(app) {
     </div>
   `;
 
-  // 點擊整張卡片：開啟 APP 網址並記錄次數
+  // ---------------------------------------------------------------------------
+  // 拖曳事件處理 (Drag & Drop Handlers)
+  // ---------------------------------------------------------------------------
+  card.addEventListener('dragstart', (e) => {
+    draggedAppId = app.id;
+    isDraggingActive = true;
+    e.dataTransfer.setData('text/plain', app.id);
+    e.dataTransfer.effectAllowed = 'move';
+    setTimeout(() => {
+      card.classList.add('dragging');
+    }, 0);
+  });
+
+  card.addEventListener('dragend', () => {
+    card.classList.remove('dragging');
+    document.querySelectorAll('.app-card').forEach(c => c.classList.remove('drop-before', 'drop-after'));
+    document.querySelectorAll('.cards-grid').forEach(g => g.classList.remove('drag-over-container'));
+    setTimeout(() => {
+      isDraggingActive = false;
+      draggedAppId = null;
+    }, 150);
+  });
+
+  card.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!draggedAppId || draggedAppId === app.id) return;
+    e.dataTransfer.dropEffect = 'move';
+
+    const rect = card.getBoundingClientRect();
+    const isLeft = e.clientX < rect.left + rect.width / 2;
+    if (isLeft) {
+      card.classList.add('drop-before');
+      card.classList.remove('drop-after');
+    } else {
+      card.classList.add('drop-after');
+      card.classList.remove('drop-before');
+    }
+  });
+
+  card.addEventListener('dragleave', () => {
+    card.classList.remove('drop-before', 'drop-after');
+  });
+
+  card.addEventListener('drop', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const isBefore = card.classList.contains('drop-before');
+    card.classList.remove('drop-before', 'drop-after');
+    document.querySelectorAll('.cards-grid').forEach(g => g.classList.remove('drag-over-container'));
+
+    if (draggedAppId && draggedAppId !== app.id) {
+      handleAppDrop(draggedAppId, app.id, isBefore, currentCategory || app.category);
+    }
+  });
+
+  // ---------------------------------------------------------------------------
+  // 點擊卡片跳轉（防呆：拖拉放開滑鼠時不觸發跳轉）
+  // ---------------------------------------------------------------------------
   const handleLaunch = () => {
+    if (isDraggingActive) return;
     state.recordAppClick(app.id);
     updateMetricsBar();
-    // 更新此卡片內的點擊次數顯示
     const clicksTag = card.querySelector('.card-stats-tag span:last-child');
     if (clicksTag) clicksTag.textContent = `${app.clickCount} ${t('clicksUnit')}`;
-
-    // 開啟新分頁
     window.open(app.url, '_blank', 'noopener,noreferrer');
   };
 
@@ -699,6 +805,83 @@ function createAppCard(app) {
   });
 
   return card;
+}
+
+// -----------------------------------------------------------------------------
+// 拖放位置重排與跨組分類處理函數
+// -----------------------------------------------------------------------------
+function handleAppDrop(sourceId, targetId, insertBefore, targetCategory) {
+  const sourceIndex = state.apps.findIndex(a => a.id === sourceId);
+  const targetIndex = state.apps.findIndex(a => a.id === targetId);
+  if (sourceIndex === -1 || targetIndex === -1) return;
+
+  const [movedApp] = state.apps.splice(sourceIndex, 1);
+  const prevCategory = movedApp.category;
+
+  // 跨組移動時更新分類與建議維度
+  if (targetCategory && movedApp.category !== targetCategory) {
+    movedApp.category = targetCategory;
+    if (targetCategory === 'work') movedApp.scope = 'work';
+    else if (targetCategory === 'life') movedApp.scope = 'life';
+  }
+
+  // 重新定位 targetIndex
+  let newTargetIndex = state.apps.findIndex(a => a.id === targetId);
+  if (!insertBefore) {
+    newTargetIndex += 1;
+  }
+  state.apps.splice(newTargetIndex, 0, movedApp);
+  state.saveToStorage();
+
+  // 提示通知
+  if (prevCategory !== movedApp.category) {
+    const catLabel = t(CATEGORY_META[movedApp.category]?.labelKey || movedApp.category);
+    showToast(t('toastCategoryChanged', { name: movedApp.name, cat: catLabel }));
+  } else {
+    showToast(t('toastOrderUpdated'));
+  }
+
+  renderCategoryTabs();
+  renderAppGallery();
+  updateMetricsBar();
+}
+
+function handleAppDropToCategory(sourceId, targetCategory) {
+  const sourceIndex = state.apps.findIndex(a => a.id === sourceId);
+  if (sourceIndex === -1) return;
+
+  const [movedApp] = state.apps.splice(sourceIndex, 1);
+  const prevCategory = movedApp.category;
+  movedApp.category = targetCategory;
+  if (targetCategory === 'work') movedApp.scope = 'work';
+  else if (targetCategory === 'life') movedApp.scope = 'life';
+
+  // 插入至該分類最後一個項目後面
+  let lastIndexOfCat = -1;
+  for (let i = state.apps.length - 1; i >= 0; i--) {
+    if (state.apps[i].category === targetCategory) {
+      lastIndexOfCat = i;
+      break;
+    }
+  }
+  if (lastIndexOfCat !== -1) {
+    state.apps.splice(lastIndexOfCat + 1, 0, movedApp);
+  } else {
+    state.apps.push(movedApp);
+  }
+
+  state.saveToStorage();
+
+  if (prevCategory !== targetCategory) {
+    const catLabel = t(CATEGORY_META[targetCategory]?.labelKey || targetCategory);
+    showToast(t('toastCategoryChanged', { name: movedApp.name, cat: catLabel }));
+  } else {
+    showToast(t('toastOrderUpdated'));
+  }
+
+  renderCategoryTabs();
+  renderAppGallery();
+  updateMetricsBar();
 }
 
 function escapeHtml(str) {
@@ -938,7 +1121,7 @@ document.getElementById('btnExportCSV').addEventListener('click', () => {
   // UTF-8 BOM 避免 Excel 亂碼
   const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  downloadBlob(blob, `komorebi_apps_report_${new Date().toISOString().slice(0, 10)}.csv`);
+  downloadBlob(blob, `clare_apps_report_${new Date().toISOString().slice(0, 10)}.csv`);
 });
 
 // 匯出 JSON 備份
@@ -950,7 +1133,7 @@ document.getElementById('btnExportJSON').addEventListener('click', () => {
   };
   const jsonStr = JSON.stringify(exportPayload, null, 2);
   const blob = new Blob([jsonStr], { type: 'application/json' });
-  downloadBlob(blob, `komorebi_backup_${new Date().toISOString().slice(0, 10)}.json`);
+  downloadBlob(blob, `clare_backup_${new Date().toISOString().slice(0, 10)}.json`);
 });
 
 // 匯入 JSON 備份

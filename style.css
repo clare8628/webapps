@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Komorebi App Hub - 日系溫潤極簡編輯風格樣式表 (Japanese Warm Minimalism & Editorial)
+   Clare App Hub - 日系溫潤極簡編輯風格樣式表 (Japanese Warm Minimalism & Editorial)
    ========================================================================== */
 
 :root {
@@ -557,6 +557,15 @@ body::before {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 18px;
+  min-height: 80px;
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-fast), outline var(--transition-fast), padding var(--transition-fast);
+}
+
+.cards-grid.drag-over-container {
+  background-color: var(--color-terracotta-soft);
+  outline: 2px dashed var(--color-terracotta);
+  outline-offset: 4px;
 }
 
 /* APP 卡片 (App Card) */
@@ -571,10 +580,50 @@ body::before {
   justify-content: space-between;
   box-shadow: var(--shadow-card);
   transition: all var(--transition-normal);
-  cursor: pointer;
+  cursor: grab;
+  user-select: none;
   overflow: hidden;
   text-decoration: none;
   color: inherit;
+}
+
+.app-card:active {
+  cursor: grabbing;
+}
+
+.app-card.dragging {
+  opacity: 0.35;
+  transform: scale(0.97) rotate(1deg);
+  border: 1px dashed var(--color-terracotta) !important;
+  box-shadow: 0 12px 32px rgba(192, 108, 76, 0.28);
+}
+
+.app-card.drop-before {
+  border-left: 4px solid var(--color-terracotta) !important;
+  transform: translateX(4px);
+}
+
+.app-card.drop-after {
+  border-right: 4px solid var(--color-terracotta) !important;
+  transform: translateX(-4px);
+}
+
+.card-drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-faint);
+  font-size: 15px;
+  opacity: 0.35;
+  transition: opacity var(--transition-fast);
+  cursor: grab;
+  margin-left: auto;
+  line-height: 1;
+}
+
+.app-card:hover .card-drag-handle {
+  opacity: 0.85;
+  color: var(--color-terracotta);
 }
 
 .app-card::after {
@@ -778,6 +827,24 @@ body::before {
   color: var(--text-muted);
   max-width: 420px;
   margin: 0 auto 20px;
+}
+
+/* 空分類拖曳放置提示區塊 */
+.empty-category-placeholder {
+  grid-column: 1 / -1;
+  padding: 24px 16px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-faint);
+  border: 1px dashed var(--border-light);
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-card-subtle);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 72px;
 }
 
 /* ==========================================================================
