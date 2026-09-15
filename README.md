@@ -77,15 +77,27 @@ python3 -m http.server 4321
 
 ---
 
+## ▍版本自動編號機制 (Version Auto-bump)
+本專案支援自動版本編號（格式：`vYYYY.MM.DD.<build>`）：
+- **一鍵推送腳本**：雙擊或在終端機執行 `push.bat`（或 `python update_version.py`），會自動遞增版本號、更新 `version.json`、`index.html` 與 `app.js`，並直接推送至 GitHub。
+- **Git Hook**：內建 `.git/hooks/pre-commit`，每次 commit 時自動更新版本編號。
+- **CI 自動化**：亦可透過 `.github/workflows/bump_version.yml` 在 GitHub 雲端自動處理。
+
+---
+
 ## ▍目錄結構
 ```
 .
 ├── index.html        # 主頁面結構、刊頭、指標列與原生 dialog 彈窗
 ├── style.css         # 和紙色系、炭墨階層、RWD 響應式與深淺色模式
 ├── app.js            # i18n 雙語、APP 管理、點擊統計與資料匯出匯入
+├── version.json      # 版本中繼資料 (版本號、建置次數、更新日期)
+├── update_version.py # 版本號自動計算與檔案同步更新腳本
+├── push.bat          # 一鍵更新版本並推送至 GitHub 捷徑腳本
 ├── prompt.md         # 原始需求定位文件
 └── README.md         # 專案說明文檔
 ```
+
 
 ---
 

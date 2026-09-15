@@ -173,6 +173,13 @@ body::before {
   transform: rotate(-3deg) scale(1.04);
 }
 
+.brand-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .brand-title {
   font-family: var(--font-serif);
   font-size: 26px;
@@ -180,6 +187,29 @@ body::before {
   letter-spacing: -0.01em;
   color: var(--text-main);
   line-height: 1.2;
+}
+
+.version-badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background-color: var(--bg-card-subtle);
+  color: var(--text-muted);
+  border: 1px solid var(--border-light);
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+  user-select: none;
+  transition: all var(--transition-fast);
+}
+
+.version-badge:hover {
+  border-color: var(--color-terracotta);
+  color: var(--color-terracotta);
+  background-color: var(--color-terracotta-soft);
 }
 
 .brand-subtitle {

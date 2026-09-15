@@ -3,6 +3,8 @@
  * 具備：中英雙語切換、分區群覽、APP 管理、滑鼠拖拉排序與跨組移動、點擊統計、數據視覺化與 CSV/JSON 匯出匯入
  */
 
+const APP_VERSION = 'v2026.09.15.5';
+
 // =============================================================================
 // 1. 多語系字典 (i18n Dictionary)
 // =============================================================================
@@ -1127,7 +1129,7 @@ document.getElementById('btnExportCSV').addEventListener('click', () => {
 // 匯出 JSON 備份
 document.getElementById('btnExportJSON').addEventListener('click', () => {
   const exportPayload = {
-    version: '1.0',
+    version: APP_VERSION,
     exportedAt: new Date().toISOString(),
     apps: state.apps
   };
