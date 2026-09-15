@@ -3,7 +3,8 @@
  * 具備：中英雙語切換、分區群覽、APP 管理、滑鼠拖拉排序與跨組移動、點擊統計、數據視覺化與 CSV/JSON 匯出匯入
  */
 
-const APP_VERSION = 'v2026.09.15.5';
+const APP_VERSION = 'v2026.09.15.6';
+const API_BASE_URL = 'https://clare-webapps-api.clare8628.workers.dev';
 
 // =============================================================================
 // 1. 多語系字典 (i18n Dictionary)
@@ -382,7 +383,26 @@ class AppState {
     localStorage.setItem('clare_view_mode', mode);
   }
 
-  addApp(appData) {
+  async fetchFromRemote() {
+    if (!API_BASE_URL) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/apps`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && Array.isArray(data.apps) && data.apps.length > 0) {
+          this.apps = data.apps;
+          this.saveToStorage();
+          renderCategoryTabs();
+          renderAppGallery();
+          updateMetricsBar();
+        }
+      }
+    } catch (e) {
+      console.warn('Could not sync from remote D1 database, using local cached data:', e);
+    }
+  }
+
+  async addApp(appData) {
     const newApp = {
       id: 'app-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
       createdAt: Date.now(),
@@ -392,22 +412,47 @@ class AppState {
     };
     this.apps.unshift(newApp);
     this.saveToStorage();
+
+    // 異步同步至遠端 Cloudflare D1
+    if (API_BASE_URL) {
+      fetch(`${API_BASE_URL}/api/apps`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newApp)
+      }).catch(err => console.warn('Failed to sync addApp to remote D1:', err));
+    }
     return newApp;
   }
 
-  updateApp(id, updatedFields) {
+  async updateApp(id, updatedFields) {
     const index = this.apps.findIndex(a => a.id === id);
     if (index !== -1) {
       this.apps[index] = { ...this.apps[index], ...updatedFields };
       this.saveToStorage();
+
+      // 異步同步至遠端 Cloudflare D1
+      if (API_BASE_URL) {
+        fetch(`${API_BASE_URL}/api/apps/${encodeURIComponent(id)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedFields)
+        }).catch(err => console.warn('Failed to sync updateApp to remote D1:', err));
+      }
       return this.apps[index];
     }
     return null;
   }
 
-  deleteApp(id) {
+  async deleteApp(id) {
     this.apps = this.apps.filter(a => a.id !== id);
     this.saveToStorage();
+
+    // 異步同步至遠端 Cloudflare D1
+    if (API_BASE_URL) {
+      fetch(`${API_BASE_URL}/api/apps/${encodeURIComponent(id)}`, {
+        method: 'DELETE'
+      }).catch(err => console.warn('Failed to sync deleteApp to remote D1:', err));
+    }
   }
 
   recordAppClick(id) {
@@ -416,12 +461,39 @@ class AppState {
       app.clickCount = (app.clickCount || 0) + 1;
       app.lastOpened = Date.now();
       this.saveToStorage();
+
+      // 異步同步至遠端 Cloudflare D1
+      if (API_BASE_URL) {
+        fetch(`${API_BASE_URL}/api/apps/${encodeURIComponent(id)}/click`, {
+          method: 'POST'
+        }).catch(err => console.warn('Failed to record click to remote D1:', err));
+      }
     }
+  }
+
+  syncReorderToRemote() {
+    if (!API_BASE_URL) return;
+    const orders = this.apps.map((app, index) => ({
+      id: app.id,
+      sortOrder: index + 1,
+      category: app.category,
+      scope: app.scope
+    }));
+    fetch(`${API_BASE_URL}/api/apps/reorder`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orders })
+    }).catch(err => console.warn('Failed to sync reorder to remote D1:', err));
   }
 
   resetToDefaults() {
     this.apps = JSON.parse(JSON.stringify(DEFAULT_APPS));
     this.saveToStorage();
+
+    if (API_BASE_URL) {
+      fetch(`${API_BASE_URL}/api/apps/reset`, { method: 'POST' })
+        .catch(err => console.warn('Failed to reset remote D1:', err));
+    }
   }
 }
 
@@ -834,6 +906,7 @@ function handleAppDrop(sourceId, targetId, insertBefore, targetCategory) {
   }
   state.apps.splice(newTargetIndex, 0, movedApp);
   state.saveToStorage();
+  state.syncReorderToRemote();
 
   // 提示通知
   if (prevCategory !== movedApp.category) {
@@ -873,6 +946,7 @@ function handleAppDropToCategory(sourceId, targetCategory) {
   }
 
   state.saveToStorage();
+  state.syncReorderToRemote();
 
   if (prevCategory !== targetCategory) {
     const catLabel = t(CATEGORY_META[targetCategory]?.labelKey || targetCategory);
@@ -1308,6 +1382,9 @@ function init() {
     renderAppGallery();
     searchInput.focus();
   });
+
+  // 非同步自 Cloudflare D1 取得最新同步清單
+  state.fetchFromRemote();
 }
 
 // 啟動應用

@@ -85,12 +85,25 @@ python3 -m http.server 4321
 
 ---
 
+## ▍跨電腦雲端同步 (Cloudflare D1 + Worker API)
+本專案支援整合 **Cloudflare D1** 全球分散式 SQL 資料庫，實現所有裝置開啟即最新，免去不同電腦手動匯出/匯入：
+- **API 核心**：`worker.js` 提供輕量 RESTful API，支援跨網域安全存取（CORS）。
+- **資料庫定義**：`schema.sql` 結構包含應用屬性、排序權重與點擊次數。
+- **一鍵部署**：在專案根目錄雙擊執行 `deploy_cf.bat`，即可自動引導建立 D1 並完成部署。
+- **離線與本機備援**：網路斷線時自動優雅回退至 `localStorage`，確保隨時皆可使用。
+
+---
+
 ## ▍目錄結構
 ```
 .
 ├── index.html        # 主頁面結構、刊頭、指標列與原生 dialog 彈窗
 ├── style.css         # 和紙色系、炭墨階層、RWD 響應式與深淺色模式
-├── app.js            # i18n 雙語、APP 管理、點擊統計與資料匯出匯入
+├── app.js            # i18n 雙語、APP 管理、點擊統計與 D1 雲端同步
+├── worker.js         # Cloudflare Worker REST API 後端服務
+├── wrangler.toml     # Cloudflare Worker 與 D1 資料庫綁定設定
+├── schema.sql        # Cloudflare D1 資料庫結構與初始預設應用資料
+├── deploy_cf.bat     # 一鍵部署 Worker 與 D1 互動腳本
 ├── version.json      # 版本中繼資料 (版本號、建置次數、更新日期)
 ├── update_version.py # 版本號自動計算與檔案同步更新腳本
 ├── push.bat          # 一鍵更新版本並推送至 GitHub 捷徑腳本
