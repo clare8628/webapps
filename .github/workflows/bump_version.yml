@@ -1,20 +1,18 @@
-name: Auto Bump Version & Deploy Pages
+name: Auto Bump Version & Deploy to Cloudflare Workers
 
 on:
   push:
     branches:
       - main
     paths-ignore:
-      - 'version.json'
+      - 'public/version.json'
       - 'README.md'
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 jobs:
-  bump-version:
+  bump-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -24,20 +22,26 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
-        uses: setup-python@v5
+        uses: actions/setup-python@v5
         with:
           python-version: '3.x'
 
       - name: Update Version Number
-        run: |
-          python update_version.py
+        run: python update_version.py
 
       - name: Commit and Push Updated Version
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           if [[ -n $(git status -s) ]]; then
-            git add version.json index.html app.js
+            git add public/version.json public/index.html public/app.js
             git commit -m "chore(release): auto bump version [skip ci]"
             git push origin main
           fi
+
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy

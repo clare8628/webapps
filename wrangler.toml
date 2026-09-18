@@ -1,6 +1,12 @@
-name = "clare-webapps-api"
+name = "webapps"
 main = "worker.js"
-compatibility_date = "2024-09-01"
+compatibility_date = "2024-09-23"
+
+# 靜態網站資源 (原 Cloudflare Pages 內容)
+[assets]
+directory = "./public"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
 
 # 綁定 Cloudflare D1 資料庫
 [[d1_databases]]

@@ -61,19 +61,18 @@
 
 ## ▍本地啟動 (Get Started)
 
-本專案為靜態單頁應用（SPA），無需繁複的建置步驟：
-
 ```bash
 # 複製專案
 git clone https://github.com/clare8628/webapps.git
 cd webapps
 
-# 使用 Python 啟動本機伺服器
-python3 -m http.server 4321
+# 方式一：僅預覽前端頁面（不含 D1 API）
+python3 -m http.server 4321 --directory public
 
-# 或直接使用任何靜態檔案伺服器開啟 index.html
+# 方式二：使用 wrangler 本機模擬完整 Worker + D1（推薦）
+npx wrangler dev
 ```
-在瀏覽器中造訪 `http://localhost:4321` 即可體驗！
+在瀏覽器中造訪對應網址即可體驗！
 
 ---
 
@@ -85,11 +84,13 @@ python3 -m http.server 4321
 
 ---
 
-## ▍跨電腦雲端同步 (Cloudflare D1 + Worker API)
-本專案支援整合 **Cloudflare D1** 全球分散式 SQL 資料庫，實現所有裝置開啟即最新，免去不同電腦手動匯出/匯入：
-- **API 核心**：`worker.js` 提供輕量 RESTful API，支援跨網域安全存取（CORS）。
+## ▍架構：單一 Cloudflare Worker（靜態頁面 + D1 REST API）
+本專案已由 Cloudflare Pages 全面改為 **Cloudflare Workers 架構**：同一個 Worker 透過 `[assets]` 設定同時提供 `public/` 靜態頁面與 `/api/*` REST API，並整合 **Cloudflare D1** 全球分散式 SQL 資料庫：
+- **靜態資源**：`wrangler.toml` 的 `[assets]` 區塊指向 `public/`，未命中 `/api/*` 的請求由 Cloudflare 直接送出靜態檔案，不會呼叫 Worker script。
+- **API 核心**：`worker.js` 處理所有 `/api/*` 路徑的輕量 RESTful API；其餘路徑回退交給靜態資源（`env.ASSETS.fetch`）。
 - **資料庫定義**：`schema.sql` 結構包含應用屬性、排序權重與點擊次數。
-- **一鍵部署**：在專案根目錄雙擊執行 `deploy_cf.bat`，即可自動引導建立 D1 並完成部署。
+- **持續部署**：`main` 分支每次 push，GitHub Actions（`.github/workflows/bump_version.yml`）會自動編版本號並透過 `wrangler deploy` 部署到 Cloudflare Workers（需在 repo 設定 `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` secrets）。
+- **首次手動設定**：在專案根目錄雙擊執行 `deploy_cf.bat`（或 `python deploy.py`），一鍵建立 D1 資料庫、匯入 `schema.sql` 並完成首次部署（後續變更改由 GitHub Actions 自動部署，`schema.sql` 不會被 CI 自動重跑，避免覆蓋雲端資料）。
 - **離線與本機備援**：網路斷線時自動優雅回退至 `localStorage`，確保隨時皆可使用。
 
 ---
@@ -97,18 +98,20 @@ python3 -m http.server 4321
 ## ▍目錄結構
 ```
 .
-├── index.html        # 主頁面結構、刊頭、指標列與原生 dialog 彈窗
-├── style.css         # 和紙色系、炭墨階層、RWD 響應式與深淺色模式
-├── app.js            # i18n 雙語、APP 管理、點擊統計與 D1 雲端同步
-├── worker.js         # Cloudflare Worker REST API 後端服務
-├── wrangler.toml     # Cloudflare Worker 與 D1 資料庫綁定設定
-├── schema.sql        # Cloudflare D1 資料庫結構與初始預設應用資料
-├── deploy_cf.bat     # 一鍵部署 Worker 與 D1 互動腳本
-├── version.json      # 版本中繼資料 (版本號、建置次數、更新日期)
-├── update_version.py # 版本號自動計算與檔案同步更新腳本
-├── push.bat          # 一鍵更新版本並推送至 GitHub 捷徑腳本
-├── prompt.md         # 原始需求定位文件
-└── README.md         # 專案說明文檔
+├── public/            # Cloudflare Worker 靜態資源目錄 ([assets] directory)
+│   ├── index.html     # 主頁面結構、刊頭、指標列與原生 dialog 彈窗
+│   ├── style.css      # 和紙色系、炭墨階層、RWD 響應式與深淺色模式
+│   ├── app.js         # i18n 雙語、APP 管理、點擊統計與 D1 雲端同步
+│   └── version.json   # 版本中繼資料 (版本號、建置次數、更新日期)
+├── worker.js          # Cloudflare Worker：/api/* REST API + 靜態資源回退
+├── wrangler.toml      # Cloudflare Worker、assets 與 D1 資料庫綁定設定
+├── schema.sql         # Cloudflare D1 資料庫結構與初始預設應用資料
+├── deploy_cf.bat      # 首次一鍵建立 D1 並部署 Worker 互動腳本
+├── update_version.py  # 版本號自動計算與檔案同步更新腳本
+├── push.bat           # 一鍵更新版本並推送至 GitHub 捷徑腳本
+├── .github/workflows/bump_version.yml # CI：自動編版本號 + wrangler deploy
+├── prompt.md          # 原始需求定位文件
+└── README.md          # 專案說明文檔
 ```
 
 

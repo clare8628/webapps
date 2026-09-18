@@ -3,8 +3,9 @@
  * 具備：中英雙語切換、分區群覽、APP 管理、滑鼠拖拉排序與跨組移動、點擊統計、數據視覺化與 CSV/JSON 匯出匯入
  */
 
-const APP_VERSION = 'v2026.09.15.6';
-const API_BASE_URL = 'https://clare-webapps-api.clare8628.workers.dev';
+const APP_VERSION = 'v2026.09.18.8';
+const API_BASE_URL = ''; // 同源 (Worker 同時提供靜態頁面與 /api/* REST API)
+const CLOUD_SYNC_ENABLED = true;
 
 // =============================================================================
 // 1. 多語系字典 (i18n Dictionary)
@@ -384,7 +385,7 @@ class AppState {
   }
 
   async fetchFromRemote() {
-    if (!API_BASE_URL) return;
+    if (!CLOUD_SYNC_ENABLED) return;
     try {
       const res = await fetch(`${API_BASE_URL}/api/apps`);
       if (res.ok) {
@@ -414,7 +415,7 @@ class AppState {
     this.saveToStorage();
 
     // 異步同步至遠端 Cloudflare D1
-    if (API_BASE_URL) {
+    if (CLOUD_SYNC_ENABLED) {
       fetch(`${API_BASE_URL}/api/apps`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -431,7 +432,7 @@ class AppState {
       this.saveToStorage();
 
       // 異步同步至遠端 Cloudflare D1
-      if (API_BASE_URL) {
+      if (CLOUD_SYNC_ENABLED) {
         fetch(`${API_BASE_URL}/api/apps/${encodeURIComponent(id)}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -448,7 +449,7 @@ class AppState {
     this.saveToStorage();
 
     // 異步同步至遠端 Cloudflare D1
-    if (API_BASE_URL) {
+    if (CLOUD_SYNC_ENABLED) {
       fetch(`${API_BASE_URL}/api/apps/${encodeURIComponent(id)}`, {
         method: 'DELETE'
       }).catch(err => console.warn('Failed to sync deleteApp to remote D1:', err));
@@ -463,7 +464,7 @@ class AppState {
       this.saveToStorage();
 
       // 異步同步至遠端 Cloudflare D1
-      if (API_BASE_URL) {
+      if (CLOUD_SYNC_ENABLED) {
         fetch(`${API_BASE_URL}/api/apps/${encodeURIComponent(id)}/click`, {
           method: 'POST'
         }).catch(err => console.warn('Failed to record click to remote D1:', err));
@@ -472,7 +473,7 @@ class AppState {
   }
 
   syncReorderToRemote() {
-    if (!API_BASE_URL) return;
+    if (!CLOUD_SYNC_ENABLED) return;
     const orders = this.apps.map((app, index) => ({
       id: app.id,
       sortOrder: index + 1,
@@ -490,7 +491,7 @@ class AppState {
     this.apps = JSON.parse(JSON.stringify(DEFAULT_APPS));
     this.saveToStorage();
 
-    if (API_BASE_URL) {
+    if (CLOUD_SYNC_ENABLED) {
       fetch(`${API_BASE_URL}/api/apps/reset`, { method: 'POST' })
         .catch(err => console.warn('Failed to reset remote D1:', err));
     }

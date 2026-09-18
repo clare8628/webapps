@@ -13,9 +13,9 @@ import subprocess
 import json
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-VERSION_JSON_PATH = os.path.join(BASE_DIR, "version.json")
-INDEX_HTML_PATH = os.path.join(BASE_DIR, "index.html")
-APP_JS_PATH = os.path.join(BASE_DIR, "app.js")
+VERSION_JSON_PATH = os.path.join(BASE_DIR, "public", "version.json")
+INDEX_HTML_PATH = os.path.join(BASE_DIR, "public", "index.html")
+APP_JS_PATH = os.path.join(BASE_DIR, "public", "app.js")
 
 def get_git_commit_count():
     try:

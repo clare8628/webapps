@@ -29,6 +29,11 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
+    // 非 /api/* 路徑一律交給靜態資源處理 (index.html / app.js / style.css...)
+    if (!path.startsWith('/api/')) {
+      return env.ASSETS.fetch(request);
+    }
+
     try {
       // 1. GET /api/apps : 取得所有應用清單
       if (request.method === 'GET' && (path === '/api/apps' || path === '/api/apps/')) {
