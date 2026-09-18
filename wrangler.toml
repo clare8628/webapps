@@ -12,4 +12,4 @@ not_found_handling = "single-page-application"
 [[d1_databases]]
 binding = "DB"
 database_name = "webapps-db"
-database_id = "PLACEHOLDER_DATABASE_ID" # 執行 wrangler d1 create 後會自動填入
+database_id = "f20ad515-6e6f-4d71-9079-7f76d1cc6272"
