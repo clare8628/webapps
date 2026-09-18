@@ -3,7 +3,7 @@
  * 具備：中英雙語切換、分區群覽、APP 管理、滑鼠拖拉排序與跨組移動、點擊統計、數據視覺化與 CSV/JSON 匯出匯入
  */
 
-const APP_VERSION = 'v2026.09.18.10';
+const APP_VERSION = 'v2026.09.18.11';
 const API_BASE_URL = ''; // 同源 (Worker 同時提供靜態頁面與 /api/* REST API)
 const CLOUD_SYNC_ENABLED = true;
 
